@@ -1,0 +1,171 @@
+### Variables ─────────────────────────────────────────────────────────────────
+@host = http://localhost:8000
+@contentType = application/json
+
+# After running "Create employee", copy the returned `id` into this variable
+# (or use the `@employeeId` capture below if your client supports it).
+@employeeId = 00000000-0000-0000-0000-000000000000
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### CREATE
+### ───────────────────────────────────────────────────────────────────────────
+
+### Create — minimal valid payload
+# @name createEmployee
+POST {{host}}/employees
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane.doe@example.com",
+  "position": "Senior Engineer",
+  "department": "Engineering",
+  "notes": "Initial hire",
+  "isActive": true
+}
+
+### Create — second employee (for pagination/sorting tests)
+POST {{host}}/employees
+Content-Type: {{contentType}}
+
+{
+  "firstName": "John2",
+  "lastName": "Smith2",
+  "email": "john.smith2@example.com",
+  "position": "Manager",
+  "department": "Engineering"
+}
+
+### Create — third employee
+POST {{host}}/employees
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Alice",
+  "lastName": "Brown",
+  "email": "alice.brown@example.com",
+  "position": "Designer",
+  "department": "Product",
+  "isActive": false
+}
+
+### Create — duplicate email (expects 409 Conflict)
+POST {{host}}/employees
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane.doe@example.com",
+  "position": "Senior Engineer"
+}
+
+### Create — invalid payload (expects 400 Bad Request, zod issues)
+POST {{host}}/employees
+Content-Type: {{contentType}}
+
+{
+  "firstName": "",
+  "email": "not-an-email"
+}
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### LIST — pagination, sorting, filtering
+### ───────────────────────────────────────────────────────────────────────────
+
+### List — defaults (page=1, pageSize=20, sort by createdAt desc)
+GET {{host}}/employees
+
+### List — pagination
+GET {{host}}/employees?page=1&pageSize=2
+
+### List — sort by lastName ascending
+GET {{host}}/employees?sortBy=lastName&sortOrder=asc
+
+### List — sort by email descending
+GET {{host}}/employees?sortBy=email&sortOrder=desc
+
+### List — search across firstName / lastName / email (case-insensitive)
+GET {{host}}/employees?search=jane
+
+### List — filter by department
+GET {{host}}/employees?department=Engineering
+
+### List — filter by position
+GET {{host}}/employees?position=Senior Engineer
+
+### List — filter active only
+GET {{host}}/employees?isActive=true
+
+### List — combined filters + pagination + sort
+GET {{host}}/employees?search=e&department=Engineering&isActive=true&sortBy=firstName&sortOrder=asc&page=1&pageSize=10
+
+### List — invalid sortBy (expects 400)
+GET {{host}}/employees?sortBy=password
+
+### List — pageSize over the cap (expects 400)
+GET {{host}}/employees?pageSize=500
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### READ ONE
+### ───────────────────────────────────────────────────────────────────────────
+
+### Find one — by id
+GET {{host}}/employees/a3323cfc-1598-4757-9273-9f6322f0ffa3
+
+### Find one — invalid uuid (expects 400)
+GET {{host}}/employees/not-a-uuid
+
+### Find one — non-existent uuid (expects 404)
+GET {{host}}/employees/00000000-0000-0000-0000-000000000999
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### UPDATE
+### ───────────────────────────────────────────────────────────────────────────
+
+### Update — partial fields
+PATCH {{host}}/employees/{{employeeId}}
+Content-Type: {{contentType}}
+
+{
+  "position": "Staff Engineer",
+  "notes": "Promoted on 2026-05-01"
+}
+
+### Update — toggle isActive
+PATCH {{host}}/employees/{{employeeId}}
+Content-Type: {{contentType}}
+
+{
+  "isActive": false
+}
+
+### Update — empty body (no-op, returns current row)
+PATCH {{host}}/employees/{{employeeId}}
+Content-Type: {{contentType}}
+
+{}
+
+### Update — unknown field (expects 400 because schema is .strict())
+PATCH {{host}}/employees/{{employeeId}}
+Content-Type: {{contentType}}
+
+{
+  "salary": 100000
+}
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### DELETE
+### ───────────────────────────────────────────────────────────────────────────
+
+### Remove — by id (expects 204 No Content)
+DELETE {{host}}/employees/{{employeeId}}
+
+### Remove — non-existent uuid (expects 404)
+DELETE {{host}}/employees/00000000-0000-0000-0000-000000000999
