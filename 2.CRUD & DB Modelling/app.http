@@ -1,0 +1,365 @@
+### Variables ─────────────────────────────────────────────────────────────────
+@host = http://localhost:8000
+@contentType = application/json
+
+# After running "Create employee", copy the returned `id` into this variable
+# (or use the `@employeeId` capture below if your client supports it).
+@employeeId = 00000000-0000-0000-0000-000000000000
+
+# After running "Create department" / "Create project", copy the returned `id`s here.
+@departmentId = 05ac0959-4df0-4697-9b0e-f42cdfafa4a4
+@projectId = 00000000-0000-0000-0000-000000000000
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### CREATE
+### ───────────────────────────────────────────────────────────────────────────
+
+### Create — minimal valid payload
+# @name createEmployee
+POST {{host}}/employees
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane.doe@example.com",
+  "position": "Senior Engineer",
+  "departmentId": "{{departmentId}}",
+  "notes": "Initial hire",
+  "isActive": true
+}
+
+### Create — second employee (for pagination/sorting tests)
+POST {{host}}/employees
+Content-Type: {{contentType}}
+
+{
+  "firstName": "John2",
+  "lastName": "Smith2",
+  "email": "john.smith2@example.com",
+  "position": "Manager",
+  "departmentId": "{{departmentId}}"
+}
+
+### Create — third employee
+POST {{host}}/employees
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Alice",
+  "lastName": "Brown",
+  "email": "alice.brown@example.com",
+  "position": "Designer",
+  "isActive": false
+}
+
+### Create — duplicate email (expects 409 Conflict)
+POST {{host}}/employees
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane.doe@example.com",
+  "position": "Senior Engineer"
+}
+
+### Create — invalid payload (expects 400 Bad Request, zod issues)
+POST {{host}}/employees
+Content-Type: {{contentType}}
+
+{
+  "firstName": "",
+  "email": "not-an-email"
+}
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### LIST — pagination, sorting, filtering
+### ───────────────────────────────────────────────────────────────────────────
+
+### List — defaults (page=1, pageSize=20, sort by createdAt desc)
+GET {{host}}/employees
+
+### List — pagination
+GET {{host}}/employees?page=2&pageSize=5
+
+### List — sort by lastName ascending
+GET {{host}}/employees?sortBy=lastName&sortOrder=desc
+
+### List — sort by email descending
+GET {{host}}/employees?sortBy=email&sortOrder=desc
+
+### List — search across firstName / lastName / email (case-insensitive)
+GET {{host}}/employees?search=jane
+
+### List — filter by department (uuid)
+GET {{host}}/employees?departmentId={{departmentId}}
+
+### List — filter by position
+GET {{host}}/employees?position=Senior Engineer
+
+### List — filter active only
+GET {{host}}/employees?isActive=true
+
+### List — combined filters + pagination + sort
+GET {{host}}/employees?search=e&departmentId={{departmentId}}&isActive=true&sortBy=firstName&sortOrder=asc&page=1&pageSize=10
+
+### List — eager-load relationships (1:1 profile, 1:N department, N:N projects)
+GET {{host}}/employees?include=department,profile,projects&pageSize=5
+
+### List — invalid sortBy (expects 400)
+GET {{host}}/employees?sortBy=password
+
+### List — pageSize over the cap (expects 400)
+GET {{host}}/employees?pageSize=500
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### READ ONE
+### ───────────────────────────────────────────────────────────────────────────
+
+### Find one — by id
+GET {{host}}/employees/a3323cfc-1598-4757-9273-9f6322f0ffa3
+
+### Find one — invalid uuid (expects 400)
+GET {{host}}/employees/not-a-uuid
+
+### Find one — non-existent uuid (expects 404)
+GET {{host}}/employees/00000000-0000-0000-0000-000000000999
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### UPDATE
+### ───────────────────────────────────────────────────────────────────────────
+
+### Update — partial fields
+PATCH {{host}}/employees/{{employeeId}}
+Content-Type: {{contentType}}
+
+{
+  "position": "Staff Engineer",
+  "notes": "Promoted on 2026-05-01"
+}
+
+### Update — toggle isActive
+PATCH {{host}}/employees/{{employeeId}}
+Content-Type: {{contentType}}
+
+{
+  "isActive": false
+}
+
+### Update — empty body (no-op, returns current row)
+PATCH {{host}}/employees/{{employeeId}}
+Content-Type: {{contentType}}
+
+{}
+
+### Update — unknown field (expects 400 because schema is .strict())
+PATCH {{host}}/employees/{{employeeId}}
+Content-Type: {{contentType}}
+
+{
+  "salary": 100000
+}
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### DELETE
+### ───────────────────────────────────────────────────────────────────────────
+
+### Remove — by id (expects 204 No Content)
+DELETE {{host}}/employees/{{employeeId}}
+
+### Remove — non-existent uuid (expects 404)
+DELETE {{host}}/employees/00000000-0000-0000-0000-000000000999
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### EMPLOYEE — find one with includes (1:1, 1:N, N:N)
+### ───────────────────────────────────────────────────────────────────────────
+
+### Find one — embed department (1:N parent)
+GET {{host}}/employees/{{employeeId}}?include=department
+
+### Find one — embed profile (1:1 child)
+GET {{host}}/employees/{{employeeId}}?include=profile
+
+### Find one — embed projects (N:N via junction)
+GET {{host}}/employees/{{employeeId}}?include=projects
+
+### Find one — embed everything
+GET {{host}}/employees/{{employeeId}}?include=department,profile,projects
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### EMPLOYEE PROFILE — 1:1 (employees ↔ employee_profiles)
+### ───────────────────────────────────────────────────────────────────────────
+
+### Get profile for an employee (404 if none yet)
+GET {{host}}/employees/{{employeeId}}/profile
+
+### Upsert profile (PUT — create or replace)
+PUT {{host}}/employees/{{employeeId}}/profile
+Content-Type: {{contentType}}
+
+{
+  "bio": "Backend engineer focused on distributed systems.",
+  "phone": "+1-555-0100",
+  "address": "1 Infinite Loop, Cupertino, CA",
+  "dateOfBirth": "1990-04-12"
+}
+
+### Upsert profile — update only some fields
+PUT {{host}}/employees/{{employeeId}}/profile
+Content-Type: {{contentType}}
+
+{
+  "bio": "Updated bio",
+  "phone": "+1-555-0199"
+}
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### DEPARTMENTS — CRUD (1:N parent)
+### ───────────────────────────────────────────────────────────────────────────
+
+### Create department
+# @name createDepartment
+POST {{host}}/departments
+Content-Type: {{contentType}}
+
+{
+  "name": "Engineering",
+  "description": "Builds and runs the platform"
+}
+
+### Create — duplicate name (expects 409)
+POST {{host}}/departments
+Content-Type: {{contentType}}
+
+{
+  "name": "Engineering"
+}
+
+### List departments
+GET {{host}}/departments
+
+### List — search + sort
+GET {{host}}/departments?search=eng&sortBy=name&sortOrder=asc
+
+### List — embed employees on each department (1:N)
+GET {{host}}/departments?includeEmployees=true&pageSize=5
+
+### Find one
+GET {{host}}/departments/{{departmentId}}
+
+### Find one — embed employees
+GET {{host}}/departments/{{departmentId}}?includeEmployees=true
+
+### Update
+PATCH {{host}}/departments/{{departmentId}}
+Content-Type: {{contentType}}
+
+{
+  "description": "Builds and operates the platform end-to-end"
+}
+
+### Delete (employees keep existing rows; their departmentId becomes NULL)
+DELETE {{host}}/departments/{{departmentId}}
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### PROJECTS — CRUD
+### ───────────────────────────────────────────────────────────────────────────
+
+### Create project
+# @name createProject
+POST {{host}}/projects
+Content-Type: {{contentType}}
+
+{
+  "name": "Atlas Platform v2",
+  "description": "Next-gen platform rewrite",
+  "startDate": "2026-01-15",
+  "endDate": "2026-12-31",
+  "isActive": true
+}
+
+### Create — invalid date order (expects 400)
+POST {{host}}/projects
+Content-Type: {{contentType}}
+
+{
+  "name": "Bad Dates",
+  "startDate": "2026-12-31",
+  "endDate": "2026-01-15"
+}
+
+### List projects
+GET {{host}}/projects
+
+### List — only active, with members embedded
+GET {{host}}/projects?isActive=true&includeMembers=true
+
+### Find one
+GET {{host}}/projects/{{projectId}}
+
+### Find one — embed members (each with their employee)
+GET {{host}}/projects/{{projectId}}?includeMembers=true
+
+### Update
+PATCH {{host}}/projects/{{projectId}}
+Content-Type: {{contentType}}
+
+{
+  "isActive": false
+}
+
+### Delete (cascades all assignments in employee_projects)
+DELETE {{host}}/projects/{{projectId}}
+
+
+### ───────────────────────────────────────────────────────────────────────────
+### PROJECT MEMBERS — N:N (employees ↔ projects via employee_projects)
+### ───────────────────────────────────────────────────────────────────────────
+
+### List members of a project
+GET {{host}}/projects/{{projectId}}/members
+
+### List projects an employee is on (from the employee side)
+GET {{host}}/employees/{{employeeId}}/projects
+
+### Assign an employee to a project
+POST {{host}}/projects/{{projectId}}/members
+Content-Type: {{contentType}}
+
+{
+  "employeeId": "{{employeeId}}",
+  "role": "Tech Lead",
+  "allocation": 80
+}
+
+### Assign — duplicate (expects 409, composite PK)
+POST {{host}}/projects/{{projectId}}/members
+Content-Type: {{contentType}}
+
+{
+  "employeeId": "{{employeeId}}",
+  "role": "Tech Lead",
+  "allocation": 80
+}
+
+### Update assignment metadata (role / allocation)
+PATCH {{host}}/projects/{{projectId}}/members/{{employeeId}}
+Content-Type: {{contentType}}
+
+{
+  "role": "Engineer",
+  "allocation": 50
+}
+
+### Remove member (expects 204)
+DELETE {{host}}/projects/{{projectId}}/members/{{employeeId}}
