@@ -1,0 +1,247 @@
+### ═══════════════════════════════════════════════════════════════════════════
+### API CACHING STRATEGIES — Workshop HTTP Requests
+###
+### Prerequisites:
+###   1. Run `pnpm docker:up` (starts PostgreSQL + Redis)
+###   2. Run `pnpm db:push` (push schema to DB)
+###   3. Run `pnpm db:seed` (populates 6 events)
+###   4. Run `pnpm start:dev` (starts the API on port 8000)
+###
+### Each response includes a `cache` object:
+###   { strategy, key, hit, ttlMs }
+### Watch `hit: true/false` to observe caching behavior in real time.
+### ═══════════════════════════════════════════════════════════════════════════
+
+@host = http://localhost:8000
+@contentType = application/json
+
+# Paste an event id from a response below (seed data generates UUIDs at runtime)
+@eventId = 00000000-0000-0000-0000-000000000000
+
+
+### ═══════════════════════════════════════════════════════════════════════════
+### LESSON 1: Cache-Aside (Lazy Loading) — Read Path
+###
+### Pattern: check cache → if miss, query DB → store in cache → return
+### Run the same request twice — first response has `hit: false` (cache miss),
+### second response has `hit: true` (served from Redis, no DB query).
+### ═══════════════════════════════════════════════════════════════════════════
+
+### 1a. List all events — FIRST call is a cache MISS (hits the database)
+GET {{host}}/events
+
+### 1b. List all events — SECOND call is a cache HIT (served from Redis)
+###     Notice: same response, but hit: true and much faster
+GET {{host}}/events
+
+### 1c. Single event detail — demonstrates per-item caching (separate TTL)
+###     Replace the UUID with a real id from the list response above
+GET {{host}}/events/{{eventId}}
+
+
+### ═══════════════════════════════════════════════════════════════════════════
+### LESSON 2: Versioned Cache Keys — How Filters Produce Unique Keys
+###
+### Each unique combination of query params generates a different cache key.
+### The key also embeds a "list version" number for invalidation (see Lesson 3).
+### Compare the `cache.key` values across these responses.
+### ═══════════════════════════════════════════════════════════════════════════
+
+### 2a. Filter by category — only webinars (2 seed events: Redis webinar + Caching Strategies)
+GET {{host}}/events?category=webinar
+
+### 2b. Filter by status — only published events (4 seed events)
+GET {{host}}/events?status=published
+
+### 2c. Filter virtual events only (2 seed events are virtual)
+GET {{host}}/events?isVirtual=true
+
+### 2d. Filter upcoming events (startsAt > now)
+GET {{host}}/events?upcoming=true
+
+### 2e. Search across title/location/organizer — e.g. "redis"
+GET {{host}}/events?search=redis
+
+### 2f. Pagination — page 1 with 2 items per page
+GET {{host}}/events?page=1&pageSize=2
+
+### 2g. Pagination — page 2 (different cache key, different data)
+GET {{host}}/events?page=2&pageSize=2
+
+### 2h. Sort by title descending
+GET {{host}}/events?sortBy=title&sortOrder=desc
+
+### 2i. Combined filters — webinars + published + sorted by startsAt
+GET {{host}}/events?category=webinar&status=published&sortBy=startsAt&sortOrder=asc
+
+
+### ═══════════════════════════════════════════════════════════════════════════
+### LESSON 3: Cache Invalidation — Version Bumping on Writes
+###
+### Strategy: Instead of scanning Redis for all cached list keys, we increment
+### a version counter. List keys embed the version, so after a bump all old
+### keys become unreachable (stale until TTL expiry, but never served).
+###
+### Steps to observe:
+###   1. Run "List all events" (Lesson 1a) — note cache.key has version N
+###   2. Run "Create" below — this bumps the version to N+1
+###   3. Run "List all events" again — cache.key now has version N+1, hit: false
+### ═══════════════════════════════════════════════════════════════════════════
+
+### 3a. Create a new event — triggers bumpListVersion()
+# @name createEvent
+POST {{host}}/events
+Content-Type: {{contentType}}
+
+{
+  "title": "Cache Invalidation Workshop",
+  "slug": "cache-invalidation-workshop",
+  "description": "Live demo of version-based cache invalidation in NestJS APIs.",
+  "location": "Nairobi Garage",
+  "organizer": "KDP User Group",
+  "category": "workshop",
+  "status": "published",
+  "startsAt": "2026-08-01T09:00:00+03:00",
+  "endsAt": "2026-08-01T13:00:00+03:00",
+  "capacity": 40,
+  "isVirtual": false
+}
+
+### 3b. Now list events again — version bumped, so this is a cache MISS
+###     Compare cache.key with the one from Lesson 1a — version number changed!
+GET {{host}}/events
+
+
+### ═══════════════════════════════════════════════════════════════════════════
+### LESSON 4: Detail Cache Invalidation — Explicit Key Deletion
+###
+### When you update or delete a specific event:
+###   - The detail cache key for that item is explicitly deleted
+###   - The list version is also bumped (since lists include the item)
+###
+### Steps:
+###   1. GET an event by id — stores it in detail cache
+###   2. PATCH the event — deletes the detail cache key + bumps list version
+###   3. GET the same event — cache MISS (fresh data from DB)
+### ═══════════════════════════════════════════════════════════════════════════
+
+### 4a. Fetch a specific event — first call populates the detail cache
+GET {{host}}/events/{{eventId}}
+
+### 4b. Update it — this invalidates both detail cache AND list version
+PATCH {{host}}/events/{{eventId}}
+Content-Type: {{contentType}}
+
+{
+  "title": "NestJS API Performance Clinic — UPDATED",
+  "capacity": 80
+}
+
+### 4c. Fetch the same event — cache MISS, returns fresh updated data
+GET {{host}}/events/{{eventId}}
+
+### 4d. Update status — another invalidation cycle
+PATCH {{host}}/events/{{eventId}}
+Content-Type: {{contentType}}
+
+{
+  "status": "cancelled"
+}
+
+
+### ═══════════════════════════════════════════════════════════════════════════
+### LESSON 5: TTL (Time-To-Live) — Automatic Expiry
+###
+### Even without writes, cache entries expire after their TTL:
+###   - List cache:    60s  (CACHE_TTL_MS)
+###   - Detail cache:  120s (CACHE_DETAIL_TTL_MS)
+###   - Version key:   24h  (CACHE_VERSION_TTL_MS)
+###
+### Exercise: Run a list request, wait 60+ seconds, run it again — hit: false.
+### The cache expired naturally without any write operation.
+### ═══════════════════════════════════════════════════════════════════════════
+
+### 5a. Run this, wait 60 seconds, run it again to observe TTL expiry
+GET {{host}}/events?category=workshop
+
+
+### ═══════════════════════════════════════════════════════════════════════════
+### LESSON 6: Delete — Full Invalidation Cycle
+###
+### Deleting an event:
+###   - Removes the detail cache key (event:{id})
+###   - Bumps the list version (all list caches become stale)
+###   - Returns 204 No Content
+### ═══════════════════════════════════════════════════════════════════════════
+
+### 6a. Delete an event (expects 204 No Content)
+DELETE {{host}}/events/{{eventId}}
+
+### 6b. Confirm it's gone (expects 404 Not Found)
+GET {{host}}/events/{{eventId}}
+
+### 6c. List events — cache MISS because version was bumped by the delete
+GET {{host}}/events
+
+
+### ═══════════════════════════════════════════════════════════════════════════
+### ERROR CASES — Validation & Conflict Handling
+### (These don't affect the cache but demonstrate schema validation)
+### ═══════════════════════════════════════════════════════════════════════════
+
+### Duplicate slug (expects 409 Conflict)
+POST {{host}}/events
+Content-Type: {{contentType}}
+
+{
+  "title": "Duplicate Slug Test",
+  "slug": "nestjs-api-performance-clinic",
+  "location": "Nairobi",
+  "organizer": "Test",
+  "category": "meetup",
+  "startsAt": "2026-09-01T09:00:00+03:00",
+  "endsAt": "2026-09-01T17:00:00+03:00"
+}
+
+### Invalid payload — missing required fields (expects 400)
+POST {{host}}/events
+Content-Type: {{contentType}}
+
+{
+  "title": "AB",
+  "slug": "INVALID SLUG!"
+}
+
+### endsAt before startsAt (expects 400 — refinement validation)
+POST {{host}}/events
+Content-Type: {{contentType}}
+
+{
+  "title": "Bad Dates Event",
+  "slug": "bad-dates-event",
+  "location": "Nairobi",
+  "organizer": "Test",
+  "category": "meetup",
+  "startsAt": "2026-09-15T17:00:00+03:00",
+  "endsAt": "2026-09-15T09:00:00+03:00"
+}
+
+### Unknown field in update — strict schema rejects it (expects 400)
+PATCH {{host}}/events/{{eventId}}
+Content-Type: {{contentType}}
+
+{
+  "price": 100
+}
+
+### Invalid UUID format (expects 400)
+GET {{host}}/events/not-a-uuid
+
+### Non-existent UUID (expects 404)
+GET {{host}}/events/00000000-0000-0000-0000-000000000999
+
+### Invalid sortBy field (expects 400)
+GET {{host}}/events?sortBy=password
+
+### pageSize over the max of 100 (expects 400)
+GET {{host}}/events?pageSize=500

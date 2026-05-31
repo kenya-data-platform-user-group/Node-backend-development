@@ -1,0 +1,88 @@
+import type { NewEventRow } from '../../events/schema/event.schema';
+
+export const eventSeedData: NewEventRow[] = [
+  {
+    title: 'NestJS API Performance Clinic',
+    slug: 'nestjs-api-performance-clinic',
+    description:
+      'Hands-on session on profiling Node.js APIs, caching decisions, and query optimization.',
+    location: 'Nairobi Garage',
+    organizer: 'KDP User Group',
+    category: 'workshop',
+    status: 'published',
+    startsAt: new Date('2026-06-04T09:00:00.000Z'),
+    endsAt: new Date('2026-06-04T13:00:00.000Z'),
+    capacity: 60,
+    isVirtual: false,
+  },
+  {
+    title: 'Redis for Backend Engineers',
+    slug: 'redis-for-backend-engineers',
+    description:
+      'Overview of Redis data structures, TTLs, and safe invalidation patterns for APIs.',
+    location: 'Online',
+    organizer: 'Node Backend Series',
+    category: 'webinar',
+    status: 'published',
+    startsAt: new Date('2026-06-12T16:00:00.000Z'),
+    endsAt: new Date('2026-06-12T17:30:00.000Z'),
+    capacity: 300,
+    isVirtual: true,
+  },
+  {
+    title: 'Event-Driven Systems Meetup',
+    slug: 'event-driven-systems-meetup',
+    description:
+      'A practical meetup on messaging, retries, and operational tradeoffs in distributed systems.',
+    location: 'Moringa School',
+    organizer: 'Backend East Africa',
+    category: 'meetup',
+    status: 'published',
+    startsAt: new Date('2026-06-20T15:30:00.000Z'),
+    endsAt: new Date('2026-06-20T18:00:00.000Z'),
+    capacity: 120,
+    isVirtual: false,
+  },
+  {
+    title: 'gRPC in Production',
+    slug: 'grpc-in-production',
+    description:
+      'Deep dive into service contracts, schema versioning, and performance with gRPC.',
+    location: 'iHub',
+    organizer: 'Cloud Native Nairobi',
+    category: 'conference',
+    status: 'draft',
+    startsAt: new Date('2026-07-02T08:00:00.000Z'),
+    endsAt: new Date('2026-07-02T17:00:00.000Z'),
+    capacity: 250,
+    isVirtual: false,
+  },
+  {
+    title: 'Caching Strategies for Event APIs',
+    slug: 'caching-strategies-for-event-apis',
+    description:
+      'Explains cache-aside, read-through, write-through, and stale data tradeoffs for high-read APIs.',
+    location: 'Online',
+    organizer: 'Kenya Data Platform User Group',
+    category: 'webinar',
+    status: 'published',
+    startsAt: new Date('2026-07-10T11:00:00.000Z'),
+    endsAt: new Date('2026-07-10T12:30:00.000Z'),
+    capacity: 500,
+    isVirtual: true,
+  },
+  {
+    title: 'Cancelled DevOps Bootcamp',
+    slug: 'cancelled-devops-bootcamp',
+    description:
+      'A cancelled event kept in the dataset to demonstrate status filters and cache invalidation.',
+    location: 'Kisumu Innovation Centre',
+    organizer: 'Platform Guild',
+    category: 'workshop',
+    status: 'cancelled',
+    startsAt: new Date('2026-07-15T08:00:00.000Z'),
+    endsAt: new Date('2026-07-15T16:00:00.000Z'),
+    capacity: 40,
+    isVirtual: false,
+  },
+];
