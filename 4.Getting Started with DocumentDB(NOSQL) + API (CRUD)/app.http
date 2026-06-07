@@ -1,0 +1,171 @@
+@base = http://localhost:3000/api/v1
+@postId = 6a0cfa52fca52fb6fb01f0fb
+@commentId = REPLACE_WITH_COMMENT_ID
+
+### ─── POSTS ──────────────────────────────────────────────
+
+### Create a post
+POST {{base}}/posts
+Content-Type: application/json
+
+{
+  "title": "Getting Started with DocumentDB",
+  "content": "DocumentDB is a JSON-native NoSQL database that speaks the MongoDB wire protocol...",
+  "author": "Alice",
+  "tags": ["nosql", "documentdb", "tutorial"],
+  "published": false
+}
+
+###
+
+### Create a second post (published)
+POST {{base}}/posts
+Content-Type: application/json
+
+{
+  "title": "Advanced Aggregation Pipelines",
+  "content": "Aggregation lets you transform and compute over documents in stages...",
+  "author": "Bob",
+  "tags": ["nosql", "aggregation"],
+  "published": true
+}
+
+###
+
+### Get all posts (defaults: page=1, limit=10, sortBy=createdAt, sortOrder=desc)
+GET {{base}}/posts
+
+###
+
+### Pagination
+GET {{base}}/posts?page=2&limit=5
+
+###
+
+### Get only published posts
+GET {{base}}/posts?published=true
+
+###
+
+### Filter by author + sort by title ascending
+GET {{base}}/posts?author=Bob&sortBy=title&sortOrder=asc
+
+###
+
+### Filter by tag + paginate
+GET {{base}}/posts?tag=nosql&page=1&limit=5
+
+###
+
+### All filters combined
+GET {{base}}/posts?published=true&author=Bob&tag=nosql&page=1&limit=10&sortBy=createdAt&sortOrder=desc
+
+###
+
+### Get a single post
+GET {{base}}/posts/{{postId}}
+
+###
+
+### Update a post (partial — only fields provided are changed)
+PATCH {{base}}/posts/{{postId}}
+Content-Type: application/json
+
+{
+  "title": "Getting Started with DocumentDB (Updated)",
+  "tags": ["nosql", "documentdb", "tutorial", "updated"]
+}
+
+###
+
+### Publish a post
+PATCH {{base}}/posts/{{postId}}/publish
+
+###
+
+### Delete a post
+DELETE {{base}}/posts/{{postId}}
+
+###
+
+### ─── VALIDATION ERRORS ───────────────────────────────────
+
+### Create post — missing required fields (expect 400)
+POST {{base}}/posts
+Content-Type: application/json
+
+{
+  "title": ""
+}
+
+###
+
+### Create post — title too long (expect 400)
+POST {{base}}/posts
+Content-Type: application/json
+
+{
+  "title": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "content": "Some content",
+  "author": "Alice"
+}
+
+###
+
+### ─── COMMENTS ────────────────────────────────────────────
+
+### Add a comment to a post
+POST {{base}}/posts/{{postId}}/comments
+Content-Type: application/json
+
+{
+  "author": "Carol",
+  "content": "Great intro! Really helped me understand DocumentDB."
+}
+
+###
+
+### Add a second comment
+POST {{base}}/posts/{{postId}}/comments
+Content-Type: application/json
+
+{
+  "author": "Dave",
+  "content": "Could you cover indexing strategies in a follow-up?"
+}
+
+###
+
+### Get all comments for a post (defaults: page=1, limit=10, sortOrder=asc)
+GET {{base}}/posts/{{postId}}/comments
+
+###
+
+### Comments — paginated, newest first
+GET {{base}}/posts/{{postId}}/comments?page=1&limit=5&sortOrder=desc
+
+###
+
+### Update a comment
+PATCH {{base}}/posts/{{postId}}/comments/{{commentId}}
+Content-Type: application/json
+
+{
+  "content": "Great intro! Really helped me understand DocumentDB. Looking forward to more!"
+}
+
+###
+
+### Delete a comment
+DELETE {{base}}/posts/{{postId}}/comments/{{commentId}}
+
+###
+
+### Comment — content too long (expect 400)
+POST {{base}}/posts/{{postId}}/comments
+Content-Type: application/json
+
+{
+  "author": "Spammer",
+  "content": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+}
