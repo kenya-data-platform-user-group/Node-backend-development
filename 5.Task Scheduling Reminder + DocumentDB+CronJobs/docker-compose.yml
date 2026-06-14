@@ -1,0 +1,45 @@
+services:
+  # ── NestJS API ──────────────────────────────────────────────────────────────
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: mongodb://admin:password@documentdb:10260?authSource=admin&tls=true&tlsAllowInvalidCertificates=true&directConnection=true
+      DATABASE_NAME: reminders
+    depends_on:
+      documentdb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── DocumentDB Local ────────────────────────────────────────────────────────
+  documentdb:
+    image: ghcr.io/documentdb/documentdb/documentdb-local:latest
+    command: ['--username', 'admin', '--password', 'password']
+    ports:
+      - '10260:10260'      # expose for DB clients (documentdb ext, mongosh, Compass, etc.)
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - '--host'
+        - 'localhost'
+        - '--port'
+        - '10260'
+        - '--username'
+        - 'admin'
+        - '--password'
+        - 'password'
+        - '--tls'
+        - '--tlsAllowInvalidCertificates'
+        - '--eval'
+        - "db.adminCommand('ping')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+volumes: {}

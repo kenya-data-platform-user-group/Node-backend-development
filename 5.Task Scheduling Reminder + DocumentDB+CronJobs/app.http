@@ -1,0 +1,491 @@
+### Variables
+@baseUrl = http://localhost:8000/api/v1
+@contentType = application/json
+
+# Replace this with an actual ID after creating a reminder
+@reminderId = 6a2ee701aaf23d913aab373d
+
+###############################################
+# Reminders API - Testing Endpoints
+###############################################
+
+### Health Check (Root)
+GET http://localhost:8000/health
+
+###############################################
+# 1. Create a New Reminder
+###############################################
+
+### Create reminder - Test reminder (ISO 8601 format)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Buy groceries",
+  "message": "Remember to buy milk, eggs, and bread",
+  "dueDate": "2025-12-31T10:00:00Z"
+}
+
+### Create reminder - Simple date format (easier to read)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Pay bills",
+  "message": "Monthly bills are due",
+  "dueDate": "2025-12-15"
+}
+
+### Create reminder - Date with time (no timezone)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Lunch meeting",
+  "message": "Meet with client at downtown cafe",
+  "dueDate": "2026-01-20 12:30"
+}
+
+### Create reminder - Local datetime format
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Conference call",
+  "message": "Quarterly review meeting",
+  "dueDate": "2026-02-10T14:00"
+}
+
+### Create reminder - With AM/PM (12-hour format)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Morning standup",
+  "message": "Daily team sync",
+  "dueDate": "2026-01-25 9:00 AM"
+}
+
+### Create reminder - Afternoon with PM
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Client presentation",
+  "message": "Quarterly business review",
+  "dueDate": "2026-01-30 2:30 PM"
+}
+
+### Create reminder - Midnight (12:00 AM)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Server maintenance",
+  "message": "Scheduled downtime",
+  "dueDate": "2026-02-01 12:00 AM"
+}
+
+### Create reminder - Noon (12:00 PM)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Lunch break",
+  "message": "Team lunch at cafeteria",
+  "dueDate": "2026-01-28 12:00 PM"
+}
+
+### Create reminder - Past due date (will be processed by cron)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Test Past Reminder",
+  "message": "This should be processed immediately by the cron job",
+  "dueDate": "2025-01-01T10:00:00Z"
+}
+
+### Create reminder - Future date
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Doctor Appointment",
+  "message": "Annual checkup at 2pm",
+  "dueDate": "2026-06-15T14:00:00Z"
+}
+
+### Create reminder - Minimal (tests validation)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Quick reminder",
+  "message": "Do the thing",
+  "dueDate": "2025-12-01T09:00:00Z"
+}
+
+### Create reminder - Invalid (missing title - should fail)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "message": "This should fail",
+  "dueDate": "2025-12-31T10:00:00Z"
+}
+
+### Create reminder - Invalid (title too long - should fail)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+  "message": "This title is way too long",
+  "dueDate": "2025-12-31T10:00:00Z"
+}
+
+###############################################
+# 2. Get All Reminders
+###############################################
+
+### Get all reminders
+GET {{baseUrl}}/reminders
+
+###############################################
+# 3. Get Pending Reminders
+###############################################
+
+### Get all pending reminders
+GET {{baseUrl}}/reminders/status/pending
+
+###############################################
+# 4. Get Sent Reminders
+###############################################
+
+### Get all sent reminders
+GET {{baseUrl}}/reminders/status/sent
+
+###############################################
+# 5. Get Single Reminder
+###############################################
+
+### Get reminder by ID (update @reminderId variable with actual ID)
+GET {{baseUrl}}/reminders/{{reminderId}}
+
+### Get reminder by ID - Not found (invalid ID)
+GET {{baseUrl}}/reminders/507f1f77bcf86cd799439099
+
+### Get reminder by ID - Invalid ObjectId format (should fail)
+GET {{baseUrl}}/reminders/invalid-id-format
+
+###############################################
+# 6. Update Reminder
+###############################################
+
+### Update reminder - Change title only
+PATCH {{baseUrl}}/reminders/{{reminderId}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Updated: Buy groceries and cook dinner",
+  "message": "Buy groceries and cook dinner, with my wife and kids"
+}
+
+### Update reminder - Change due date only
+PATCH {{baseUrl}}/reminders/{{reminderId}}
+Content-Type: {{contentType}}
+
+{
+  "dueDate": "2025-12-31T14:00:00Z"
+}
+
+### Update reminder - Change multiple fields
+PATCH {{baseUrl}}/reminders/{{reminderId}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Grocery Shopping",
+  "message": "Buy milk, eggs, bread, and vegetables",
+  "dueDate": "2025-12-30T18:00:00Z"
+}
+
+### Update reminder - Empty update (all fields optional)
+PATCH {{baseUrl}}/reminders/{{reminderId}}
+Content-Type: {{contentType}}
+
+{
+}
+
+### Update reminder - Not found
+PATCH {{baseUrl}}/reminders/507f1f77bcf86cd799439099
+Content-Type: {{contentType}}
+
+{
+  "title": "This should fail"
+}
+
+###############################################
+# 7. Delete Reminder
+###############################################
+
+### Delete reminder (update @reminderId with ID to delete)
+DELETE {{baseUrl}}/reminders/{{reminderId}}
+
+### Delete reminder - Not found
+DELETE {{baseUrl}}/reminders/507f1f77bcf86cd799439099
+
+### Delete reminder - Invalid ObjectId format
+DELETE {{baseUrl}}/reminders/invalid-id
+
+###############################################
+# Testing Scenarios
+###############################################
+
+### Scenario 1: Create multiple reminders for testing
+# Run these requests in sequence to populate the database
+
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Morning Exercise",
+  "message": "Go for a 30-minute run",
+  "dueDate": "2026-01-15T07:00:00Z"
+}
+
+###
+
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Team Meeting",
+  "message": "Weekly sync with the development team",
+  "dueDate": "2026-01-16T10:00:00Z"
+}
+
+###
+
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Dentist Appointment",
+  "message": "Teeth cleaning at Downtown Dental",
+  "dueDate": "2026-01-20T15:30:00Z"
+}
+
+###
+
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Already Due - Should Process",
+  "message": "This reminder is in the past and should be processed by cron",
+  "dueDate": "2024-01-01T10:00:00Z"
+}
+
+###############################################
+# Test Cron Job Processing
+###############################################
+
+### Step 1: Create a reminder with past due date
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Test Cron Processing",
+  "message": "This should be automatically processed",
+  "dueDate": "2024-12-25T00:00:00Z"
+}
+
+### Step 2: Check pending reminders (should see the reminder above)
+GET {{baseUrl}}/reminders/status/pending
+
+### Step 3: Wait ~1 minute for cron job to run
+
+### Step 4: Check sent reminders (should see the processed reminder)
+GET {{baseUrl}}/reminders/status/sent
+
+### Step 5: Verify reminder was marked as sent
+# Copy the ID from Step 1 response and use it here
+GET {{baseUrl}}/reminders/{{reminderId}}
+
+###############################################
+# Recurring Reminders + Timezone Support
+###############################################
+
+### Create minutely recurring reminder (useful for testing)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Test Minutely Reminder",
+  "message": "Fires every minute for testing",
+  "dueDate": "2026-01-20 9:00 AM",
+  "timezone": "America/New_York",
+  "isRecurring": true,
+  "recurrencePattern": "minutely",
+  "recurrenceEndDate": "2026-01-20 9:10 AM"
+}
+
+### Create hourly recurring reminder
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Hourly status check",
+  "message": "Check system status every hour",
+  "dueDate": "2026-01-20 9:00 AM",
+  "timezone": "America/New_York",
+  "isRecurring": true,
+  "recurrencePattern": "hourly"
+}
+
+### Create hourly reminder with interval (every 3 hours)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Tri-hourly backup",
+  "message": "Create backup every 3 hours",
+  "dueDate": "2026-01-20 9:00 AM",
+  "timezone": "America/New_York",
+  "isRecurring": true,
+  "recurrencePattern": "hourly",
+  "recurrenceInterval": 3
+}
+
+### Create daily recurring reminder
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Daily standup",
+  "message": "Team sync meeting every day",
+  "dueDate": "2026-01-20 9:00 AM",
+  "timezone": "America/New_York",
+  "isRecurring": true,
+  "recurrencePattern": "daily"
+}
+
+### Create daily recurring reminder with interval (every 2 days)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Exercise routine",
+  "message": "Go to the gym",
+  "dueDate": "2026-01-20 6:00 AM",
+  "timezone": "America/Los_Angeles",
+  "isRecurring": true,
+  "recurrencePattern": "daily",
+  "recurrenceInterval": 2
+}
+
+### Create weekly recurring reminder
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Weekly team meeting",
+  "message": "Review progress and plan for next week",
+  "dueDate": "2026-01-24 2:00 PM",
+  "timezone": "America/Chicago",
+  "isRecurring": true,
+  "recurrencePattern": "weekly"
+}
+
+### Create monthly recurring reminder
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Pay rent",
+  "message": "Monthly rent payment",
+  "dueDate": "2026-02-01 9:00 AM",
+  "timezone": "America/New_York",
+  "isRecurring": true,
+  "recurrencePattern": "monthly"
+}
+
+### Create recurring reminder with end date
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Project daily sync",
+  "message": "Daily check-in during project phase",
+  "dueDate": "2026-01-20 10:00 AM",
+  "timezone": "America/New_York",
+  "isRecurring": true,
+  "recurrencePattern": "daily",
+  "recurrenceEndDate": "2026-03-31"
+}
+
+### Create one-time reminder with specific timezone
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "International conference call",
+  "message": "Call with Tokyo office",
+  "dueDate": "2026-02-15 10:00 AM",
+  "timezone": "Asia/Tokyo"
+}
+
+### Get all active recurring reminders
+GET {{baseUrl}}/reminders/status/active
+
+### Update reminder to enable recurrence
+PATCH {{baseUrl}}/reminders/{{reminderId}}
+Content-Type: {{contentType}}
+
+{
+  "isRecurring": true,
+  "recurrencePattern": "weekly",
+  "timezone": "America/New_York"
+}
+
+### Update reminder timezone only
+PATCH {{baseUrl}}/reminders/{{reminderId}}
+Content-Type: {{contentType}}
+
+{
+  "timezone": "Europe/London"
+}
+
+### Update recurrence pattern
+PATCH {{baseUrl}}/reminders/{{reminderId}}
+Content-Type: {{contentType}}
+
+{
+  "recurrencePattern": "monthly",
+  "recurrenceInterval": 1
+}
+
+###############################################
+# Testing Recurring Reminder Processing
+###############################################
+
+### Step 1: Create a recurring reminder with past due date (for immediate processing)
+POST {{baseUrl}}/reminders
+Content-Type: {{contentType}}
+
+{
+  "title": "Test Recurring Processing",
+  "message": "This should be processed immediately and next occurrence calculated",
+  "dueDate": "2025-01-01 10:00 AM",
+  "timezone": "America/New_York",
+  "isRecurring": true,
+  "recurrencePattern": "daily"
+}
+
+### Step 2: Check active reminders (should see the reminder with nextDueDate updated)
+GET {{baseUrl}}/reminders/status/active
+
+### Step 3: Verify recurring reminder was processed and nextDueDate set
+# Copy the ID from Step 1 response
+GET {{baseUrl}}/reminders/{{reminderId}}
